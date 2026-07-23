@@ -62,7 +62,7 @@ def fetch_omni(start_time, end_time):
         params,
         start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
         end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        logging=False,
+        logging=False, usecache=False, cache=False,
     )
 
     df = pd.DataFrame(data)
