@@ -23,7 +23,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install pandas requests pyarrow
+        run: pip install pandas requests pyarrow numpy hapiclient skyfield
 
       - name: Run daily fetch
         run: python fetch_daily.py
