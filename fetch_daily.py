@@ -52,15 +52,20 @@ PARAM_MAP = {
     'PC_N_INDEX1800': 'PC', 'Solar_Lyman_alpha1800': 'LYMAN_ALPHA', 'Proton_QI1800': 'QI',
 }
 
-def fetch_omni(start_time, end_time):
-    """CDAWeb HAPIから、差分期間ぶんのOMNI2データを取得し、日次平均に集計する"""
+def fetch_omni(now):
+    """CDAWeb HAPIからOMNI2を取得する。
+
+    OMNI2は確定版として公開されるまで数週間のタイムラグがあるため、
+    「直近」を毎回リクエストしても永遠にデータが存在せずエラーになり続ける。
+    そのため、常に「今日から40日前の1日分」を狙って取得する
+    (state.jsonでどこまで埋まったかを別途管理し、未取得日から順に埋めていく)。
+    """
     from hapiclient import hapi
     params = ','.join(PARAM_MAP.keys())
 
-    # 取得期間が短すぎると(数分など)、HAPIサーバーが不完全なレスポンスを返すことがあるため、
-    # 最低1時間分は確保する
-    if (end_time - start_time) < timedelta(hours=1):
-        start_time = end_time - timedelta(hours=1)
+    target_day = (now - timedelta(days=40)).replace(hour=0, minute=0, second=0, microsecond=0)
+    start_time = target_day
+    end_time = target_day + timedelta(days=1)
 
     data, meta = hapi(
         'https://cdaweb.gsfc.nasa.gov/hapi', 'OMNI2_H0_MRG1HR',
@@ -282,11 +287,12 @@ def main():
 
     print("OMNI2(宇宙天気)を取得中...")
     try:
-        omni_df = fetch_omni(last_run, now)
-        print(f"  OMNI2新規: {len(omni_df)} 日分")
+        omni_df = fetch_omni(now)
+        print(f"  OMNI2新規: {len(omni_df)} 日分(40日前のデータを取得)")
         if len(omni_df) > 0:
             os.makedirs(OUTPUT_DIR, exist_ok=True)
-            omni_out_path = os.path.join(OUTPUT_DIR, f"omni_daily_{now.strftime('%Y%m%d')}.parquet")
+            target_date_str = omni_df['Time'].iloc[0].strftime('%Y%m%d')
+            omni_out_path = os.path.join(OUTPUT_DIR, f"omni_daily_{target_date_str}.parquet")
             omni_df.to_parquet(omni_out_path, index=False)
             print(f"保存: {omni_out_path}")
     except Exception as e:
