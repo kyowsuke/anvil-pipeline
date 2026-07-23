@@ -57,6 +57,11 @@ def fetch_omni(start_time, end_time):
     from hapiclient import hapi
     params = ','.join(PARAM_MAP.keys())
 
+    # 取得期間が短すぎると(数分など)、HAPIサーバーが不完全なレスポンスを返すことがあるため、
+    # 最低1時間分は確保する
+    if (end_time - start_time) < timedelta(hours=1):
+        start_time = end_time - timedelta(hours=1)
+
     data, meta = hapi(
         'https://cdaweb.gsfc.nasa.gov/hapi', 'OMNI2_H0_MRG1HR',
         params,
